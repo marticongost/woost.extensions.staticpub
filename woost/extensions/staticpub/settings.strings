@@ -1,0 +1,8 @@
+
+[woost.models.settings]
+
+    [x_staticpub_default_dest]
+    ca: Destinació de publicació estàtica per defecte
+    es: Destinación de publicación estática por defecto
+    en: Static publication default destination
+

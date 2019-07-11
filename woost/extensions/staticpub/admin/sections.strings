@@ -1,0 +1,13 @@
+
+[woost.extensions.staticpub.admin.sections]
+
+    [StaticpubSection.instance]
+    ca: Publicació estàtica
+    es: Publicación estática
+    en: Static publication
+
+    [StaticpubSettings.instance]
+    ca: Configuració
+    es: Configuración
+    en: Settings
+

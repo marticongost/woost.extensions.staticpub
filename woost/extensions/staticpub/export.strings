@@ -1,0 +1,141 @@
+
+
+[woost.extensions.staticpub.export]
+
+    [Export]
+    ca: Exportació estàtica
+    es: Exportación estática
+    en: Static export
+
+        [plural]
+        ca: Exportacions estàtiques
+        es: Exportaciones estáticas
+        en: Static exports
+
+        [admin.menu_entry]
+        ca: Exportacions
+        es: Exportaciones
+        en: Exports
+
+        [members]
+
+            [destination]
+            ca: Destinació
+            es: Destinación
+            en: Destination
+
+            [state]
+            ca: Estat
+            es: Estado
+            en: State
+
+                [values]
+
+                    [idle]
+                    ca: En pausa
+                    es: En pausa
+                    en: Idle
+
+                    [running]
+                    ca: Exportant
+                    es: Exportando
+                    en: Exporting
+
+                    [completed]
+                    ca: Completada
+                    es: Completada
+                    en: Completed
+
+            [tasks]
+            ca: Tasques
+            es: Tareas
+            en: Tasks
+
+    [export_task_schema]
+
+        [members]
+
+            [item]
+            ca: Element
+            es: Elemento
+            en: Element
+
+            [language]
+            ca: Idioma
+            es: Idioma
+            en: Language
+
+            [action]
+            ca: Acció
+            es: Acción
+            en: Action
+
+                [values]
+
+                    [post]
+                    ca: Publicar
+                    es: Publicar
+                    en: Publish
+
+                    [delete]
+                    ca: Eliminar
+                    es: Eliminar
+                    en: Delete
+
+            [state]
+            ca: Estat
+            es: Estado
+            en: State
+
+                [values]
+
+                    [pending]
+                    ca: Pendent
+                    es: Pendiente
+                    en: Pending
+
+                    [success]
+                    ca: Exportat amb èxit
+                    es: Exportado con éxito
+                    en: Exported successfully
+
+                    [failed]
+                    ca: Fallit
+                    es: Fallido
+                    en: Failed
+
+            [error_message]
+            ca: Error
+            es: Error
+            en: Error
+
+        [tasks_summary(pending, successes, failures)]
+        @switch pending > 0
+
+            [completed]
+            @case False
+            ca:
+                ${plural2(successes, u"1 element exportat", u"%d elements exportats")} amb èxit,
+                ${plural2(failures, u"1 fallit", u"%d fallits")}
+            es:
+                ${plural2(successes, u"1 elemento exportado", u"%d elementos exportados")} con éxito,
+                ${plural2(failures, u"1 fallido", u"%d fallidos")}
+            en:
+                ${plural2(successes, u"1 element", u"%d elements")} exported successfully,
+                ${failures} failed
+
+            [pending]
+            @case True
+            ca:
+                ${plural2(pending, u"1 element pendent", u"%d elements pendents")},
+                ${plural2(successes, u"1 exportat", u"%d exportats")} amb èxit,
+                ${plural2(failures, u"1 fallit", u"%d fallits")}
+            es:
+                ${plural2(pending, u"1 elemento pendiente", u"%d elementos pendientes")},
+                ${plural2(successes, u"1 exportado", u"%d exportados")} con éxito,
+                ${plural2(failures, u"1 fallido", u"%d fallidos")}
+            en:
+                ${plural2(pending, u"1 element", u"%d elements")} pending,
+                ${successes} exported successfully,
+                ${failures} failed
+

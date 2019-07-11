@@ -1,0 +1,38 @@
+
+[woost.extensions.staticpub.destination.Destination]
+ca: Destinació de publicació estàtica
+es: Destinación de publicación estática
+en: Static publication destination
+
+    [plural]
+    ca: Destinacions de publicació estàtica
+    es: Destinaciones de publicación estática
+    en: Static publication destinations
+
+    [admin.menu_entry]
+    ca: Destinacions
+    es: Destinaciones
+    en: Destinations
+
+    [members]
+
+        [title]
+        ca: Nom
+        es: Nombre
+        en: Name
+
+        [url]
+        ca: Adreça URL
+        es: Dirección URL
+        en: URL address
+
+        [website_prefixes]
+        ca: Prefixos pels llocs web
+        es: Prefijos para los sitios web
+        en: Website prefixes
+
+        [exports]
+        ca: Exportacions
+        es: Exportaciones
+        en: Exports
+

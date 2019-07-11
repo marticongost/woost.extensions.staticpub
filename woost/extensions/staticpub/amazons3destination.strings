@@ -1,0 +1,52 @@
+
+[woost.extensions.staticpub.amazons3destination.AmazonS3Destination]
+ca: Destinació d'Amazon S3
+es: Destinación de Amazon S3
+en: Amazon S3 destination
+
+    [plural]
+    ca: Destinacions d'Amazon S3
+    es: Destinaciones de Amazon S3
+    en: Amazon S3 destinations
+
+    [members]
+
+        [aws_access_key]
+        ca: Clau d'accés
+        es: Clave de acceso
+        en: Access key
+
+        [aws_secret_key]
+        ca: Clau secreta
+        es: Clave secreta
+        en: Secret key
+
+        [aws_profile]
+        ca: Perfil
+        es: Perfil
+        en: Profile
+
+            [explanation]
+            ca:
+                El nom del perfil de configuració a utilitzar (només si s'ha definit un
+                fitxer de configuració d'SDK d'AWS).
+            es:
+                El nombre del perfil de configuración a utilizar (solo si se ha definido
+                un fichero de configuración del SDK de AWS).
+            en:
+                The name of the configuration profile to use (only if a configuration file
+                for the AWS SDK has been defined).
+
+        [bucket_name]
+        *: Bucket
+
+        [prefix]
+        ca: Prefix
+        es: Prefijo
+        en: Prefix
+
+            [explanation]
+            ca: Un prefix que s'afegirà al nom de les claus exportades.
+            es: Un prefijo que se añadirà al nombre de las claves exportadas.
+            en: A prefix to add to exported keys.
+

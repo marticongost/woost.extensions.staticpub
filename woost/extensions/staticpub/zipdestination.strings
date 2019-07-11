@@ -1,0 +1,11 @@
+
+[woost.extensions.staticpub.zipdestination.ZIPDestination]
+ca: Destinació de fitxer ZIP
+es: Destinación de fichero ZIP
+en: ZIP destination
+
+    [plural]
+    ca: Destinacions de fitxer ZIP
+    es: Destinaciones de fichero ZIP
+    en: ZIP destinations
+

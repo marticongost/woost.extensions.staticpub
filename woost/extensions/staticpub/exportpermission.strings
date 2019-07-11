@@ -1,0 +1,18 @@
+
+[woost.extensions.staticpub.exportpermission.ExportPermission]
+ca: Permís d'exportació
+es: Permiso de exportación
+en: Export permission
+
+    [plural]
+    ca: Permisos d'exportació
+    es: Permisos de exportación
+    en: Export permissions
+
+    [members]
+
+        [destinations]
+        ca: Destinacions
+        es: Destinos
+        en: Destinations
+

@@ -1,0 +1,10 @@
+
+[woost.models.publishable.Publishable]
+
+    [members]
+
+        [x_staticpub_exportable]
+        ca: Inclòs a la publicació estàtica
+        es: Incluido en la publicación estática
+        en: Included in static publication
+

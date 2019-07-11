@@ -1,0 +1,18 @@
+
+[woost.extensions.staticpub.folderdestination.FolderDestination]
+ca: Destinació de carpeta
+es: Destinación de carpeta
+en: Folder destination
+
+    [plural]
+    ca: Destinacions de carpeta
+    es: Destinaciones de carpeta
+    en: Folder destinations
+
+    [members]
+
+        [root_folder]
+        ca: Carpeta arrel
+        es: Carpeta raíz
+        en: Root folder
+
