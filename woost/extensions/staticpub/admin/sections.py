@@ -15,6 +15,8 @@ translations.load_bundle("woost.extensions.staticpub.admin.sections")
 
 class StaticpubSettings(Settings):
 
+    icon_uri = None
+
     members = [
         "x_staticpub_default_dest"
     ]
