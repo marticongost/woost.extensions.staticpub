@@ -2,18 +2,25 @@
 
 .. moduleauthor:: Martí Congost <marti.congost@whads.com>
 """
+from typing import Dict, Iterable, Sequence, Tuple
 import re
+import weakref
+from itertools import zip_longest
 
 import requests
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 from cocktail.events import Event
 from cocktail.translations import language_context
 from cocktail.urls import URL
 from cocktail.persistence import datastore, transaction
 from woost import app
-from woost.models import Configuration, File
+from woost.urls import URLResolution
+from woost.models import Configuration, File, PublishableObject
 
+from .exporter import Exporter
 from .utils import EXPORT_HEADER, USER_AGENT
+
+ResourceWithinDocument = Tuple[Tag, str, URL, str]
 
 
 class ExportJob:
@@ -23,6 +30,7 @@ class ExportJob:
     dependencies = None
     reset = False
     errors = "resume" # "resume" or "raise"
+    encoding = "utf-8"
 
     selecting_export_urls = Event()
     export_starting = Event()
@@ -63,13 +71,20 @@ class ExportJob:
 
     def __init__(self, export):
         self.export = export
-        self.exporter = export.destination.create_exporter()
+        self.exporter = self.create_exporter()
         self.document_urls = set()
         self.dependencies = set()
         self.pending_dependencies = set()
         self.__url_resolutions = {}
 
-    def get_export_urls(self, item, language):
+    def create_exporter(self, **kwargs) -> Exporter:
+        return self.export.destination.create_exporter(**kwargs)
+
+    def get_export_urls(
+            self,
+            item: PublishableObject,
+            language: str) -> Sequence[URL]:
+
         e = self.selecting_export_urls(
             item=item,
             language=language,
@@ -77,7 +92,13 @@ class ExportJob:
         )
         return e.urls
 
-    def get_source_url(self, item, language, path=None, parameters=None):
+    def get_source_url(
+            self,
+            item: PublishableObject,
+            language: str,
+            path: Sequence[str] = None,
+            parameters: Dict[str, str] = None) -> URL:
+
         return item.get_uri(
             language=language,
             path=path,
@@ -133,7 +154,7 @@ class ExportJob:
                 self.export_ended()
                 self.exporter.close()
 
-    def execute_task(self, task):
+    def execute_task(self, task: dict):
 
         self.task_starting(task=task)
 
@@ -166,7 +187,7 @@ class ExportJob:
                     self.exporter.write_file(
                         resource.export_path,
                         resource.content,
-                        content_type = resource.content_type
+                        content_type=resource.content_type
                     )
 
                 elif action == "delete":
@@ -205,25 +226,37 @@ class ExportJob:
         else:
             self.task_successful(task=task)
 
-    def get_request_parameters(self, resource):
-        return {
-            "headers": {
-                "User-agent": USER_AGENT,
-                EXPORT_HEADER: str(self.export.id)
-            }
+    def get_request_parameters(
+            self,
+            resource: 'ExportedResource') -> Dict[str, str]:
+
+        headers = {
+            "User-agent": USER_AGENT,
+            EXPORT_HEADER: str(self.export.id),
         }
 
-    def process_resource(self, resource):
+        if self.export.auth_token:
+            headers[app.authentication.AUTH_TOKEN_HEADER] = \
+                self.export.auth_token
+
+        return {"headers": headers}
+
+    def process_resource(self, resource: 'ExportedResource'):
 
         if resource.content_type == "text/html":
-            document = BeautifulSoup(resource.content)
+            document = BeautifulSoup(resource.content, features="lxml")
             self.process_html(document, resource)
-            resource.content = unicode(document)
+            resource.content = str(document)
 
         elif resource.content_type == "text/css":
-            resource.content = self.process_css(resource.content, resource)
+            css = resource.content.decode(self.encoding)
+            css = self.process_css(css, resource)
+            resource.content = css.encode(self.encoding)
 
-    def process_html(self, document, resource):
+    def process_html(
+            self,
+            document: BeautifulSoup,
+            resource: 'ExportedResource'):
 
         # Process embedded styles
         for element in document.find_all("style"):
@@ -234,7 +267,7 @@ class ExportJob:
             ):
                 element.string = self.process_css(element.string, resource)
 
-        # Process client models
+        # Process embdded scripts
         for element in document.find_all("script"):
             content_type = element.get("type")
             if (
@@ -247,42 +280,78 @@ class ExportJob:
                 )
 
         # Transform URLs
-        for element, attr, url in self.iter_urls_in_html(document, resource):
+        for element, attr, url, content_type \
+        in self.iter_urls_in_html(document, resource):
             self.process_html_url(
                 element,
                 attr,
                 url,
+                content_type,
                 resource
             )
 
-    def iter_urls_in_html(self, document, resource):
+    def iter_urls_in_html(
+            self,
+            document: BeautifulSoup,
+            resource: 'ExportedResource') -> Iterable[ResourceWithinDocument]:
 
         for link in document.find_all("link"):
             href = link.get("href")
             if href:
-                yield link, "href", URL(href)
+                ctype = link.get("type")
+                if not ctype:
+                    rel = link.get("rel")
+                    if rel and str(rel).lower() == "stylesheet":
+                        ctype = "text/css"
+                yield link, "href", URL(href), ctype
 
         for script in document.find_all("script"):
             src = script.get("src")
             if src:
-                yield script, "src", URL(src)
+                yield (
+                    script,
+                    "src",
+                    URL(src),
+                    script.get("type") or "application/javascript"
+                )
 
         for img in document.find_all("img"):
             src = img.get("src")
             if src:
-                yield img, "src", URL(src)
+                yield img, "src", URL(src), None
+
+        for video in document.find_all("video"):
+            src = video.get("src")
+            if src:
+                yield video, "src", URL(src), video.get("type")
+
+        for audio in document.find_all("audio"):
+            src = audio.get("src")
+            if src:
+                yield audio, "src", URL(src), audio.get("type")
+
+        for source in document.find_all("source"):
+            src = source.get("src")
+            if src:
+                yield source, "src", URL(src), source.get("type")
 
         for a in document.find_all("a"):
             href = a.get("href")
             if href and not href.startswith("#"):
-                yield a, "href", URL(href)
+                yield a, "href", URL(href), a.get("type")
 
         for iframe in document.find_all("iframe"):
             src = iframe.get("src")
             if src:
-                yield iframe, "src", URL(src)
+                yield iframe, "src", URL(src), None
 
-    def process_html_url(self, element, attr, url, resource):
+    def process_html_url(
+            self,
+            element: Tag,
+            attr: str,
+            url: URL,
+            content_type: str,
+            resource: 'ExportedResource'):
 
         if url.scheme in ("javascript", "mailto"):
             return url
@@ -290,13 +359,16 @@ class ExportJob:
         url = self.normalize_href(url, resource)
 
         # Collect dependencies
-        self.add_dependency(url)
+        self.add_dependency(url, content_type=content_type)
 
         # Transform the resource URL into a relative path
-        url = self.transform_href(url, resource)
+        url = self.transform_href(url, resource, content_type=content_type)
         element[attr] = url
 
-    def process_css(self, content, resource):
+    def process_css(
+            self,
+            content: str,
+            resource: 'ExportedResource') -> str:
 
         def replace_url(match):
 
@@ -307,13 +379,16 @@ class ExportJob:
 
             url = URL(value)
             url = self.normalize_href(url, resource)
-            self.add_dependency(url)
-            url = self.transform_href(url, resource)
-            return u"url('%s')" % url
+            self.add_dependency(url, content_type="text/css")
+            url = self.transform_href(url, resource, content_type="text/css")
+            return f"url('{url}')"
 
         return self.css_url_regexp.sub(replace_url, content)
 
-    def process_embedded_javascript(self, content, resource):
+    def process_embedded_javascript(
+            self,
+            content: str,
+            resource: 'ExportedResource') -> str:
 
         def process_strings(match):
             c = match.group("delim")
@@ -332,19 +407,23 @@ class ExportJob:
 
             url = URL(value)
             url = self.normalize_href(url, resource)
-            self.add_dependency(url)
-            url = self.transform_href(url, resource)
+            self.add_dependency(url, content_type="application/javascript")
+            url = self.transform_href(
+                url,
+                resource,
+                content_type="application/javascript"
+            )
             return match.group("head") + url + match.group("tail")
 
         return self.js_string_regexp.sub(process_strings, content)
 
-    def get_base_url(self, url):
-        if url.path and "." in url.path.segments[-1]:
+    def get_base_url(self, url: URL) -> URL:
+        if len(url.path) > 1:
             return url.copy(path=url.path.pop(-1))
         else:
             return url
 
-    def normalize_href(self, url, resource):
+    def normalize_href(self, url: URL, resource: 'ExportedResource') -> URL:
 
         # Normalize relative URLs using the source URL for the processed
         # document
@@ -357,41 +436,65 @@ class ExportJob:
 
         # Normalize URLs to their canonical form
         if not self.url_is_external(url):
-            url = app.url_mapping.get_canonical_url(
-                url,
-                language=resource.language
-            )
+            resolution = self.resolve_url(url)
+            if resolution and resolution.publishable:
+                url = app.url_mapping.get_canonical_url(
+                    url,
+                    language=resource.language,
+                    preserve_extra_path=True
+                )
 
         return url
 
-    def transform_href(self, url, resource):
+    def transform_href(
+            self,
+            url: URL,
+            resource: "ExportedResource",
+            content_type: str = None) -> URL:
+
         if self.url_is_external(url):
             return url
         else:
             if self.should_make_url_absolute(url, resource):
-                return self.export.destination.get_export_url(url)
+                return self.export.destination.get_export_url(
+                    url,
+                    content_type=content_type
+                )
             else:
-                return self.get_relative_url(url, resource)
+                return self.get_relative_url(
+                    url,
+                    resource,
+                    content_type=content_type
+                )
 
-    def should_make_url_absolute(self, url, resource):
+    def should_make_url_absolute(
+            self,
+            url: URL,
+            resource: 'ExportedResource') -> bool:
+
         return False
 
-    def get_relative_url(self, url, resource):
+    def get_relative_url(
+            self,
+            url: URL,
+            resource: "ExportedResource",
+            content_type: str = None) -> URL:
 
         # Express URLs as paths relative to the exported document
-        url_export_path = self.export.destination.get_export_path(url)
+        url_export_path = self.export.destination.get_export_path(
+            url,
+            content_type=content_type
+        )
 
         i = 0
-        while (
-            i < len(resource.export_folder)
-            and i < len(url_export_path)
-            and resource.export_folder[i] == url_export_path[i]
-        ):
+        for a, b in zip_longest(resource.export_folder, url_export_path):
+            if a != b:
+                break
             i += 1
 
         url_export_path = url_export_path[i:]
 
-        for n in xrange(len(resource.export_folder) - i - 1):
+        for n in range(len(resource.export_folder) - i):
             url_export_path.insert(0, u"..")
 
         return URL(
@@ -400,7 +503,7 @@ class ExportJob:
             fragment=url.fragment
         )
 
-    def url_is_external(self, url):
+    def url_is_external(self, url: URL) -> bool:
 
         if not url.hostname:
             return False
@@ -408,7 +511,10 @@ class ExportJob:
         config = Configuration.instance
         return config.get_website_by_host(url.hostname) is None
 
-    def url_is_exportable_dependency(self, url):
+    def url_is_exportable_dependency(
+            self,
+            url: URL,
+            content_type: str = None) -> bool:
 
         # Ignore external URLs
         if self.url_is_external(url):
@@ -419,10 +525,13 @@ class ExportJob:
         return (
             not resolution
             or not resolution.publishable
-            or resolution.publishable.mime_type != "text/html"
+            or (
+                content_type
+                or resolution.publishable.mime_type
+            ) != "text/html"
         )
 
-    def resolve_url(self, url):
+    def resolve_url(self, url: URL) -> URLResolution:
         try:
             return self.__url_resolutions[url]
         except KeyError:
@@ -430,9 +539,13 @@ class ExportJob:
             self.__url_resolutions[url] = resolution
             return resolution
 
-    def add_dependency(self, url):
+    def add_dependency(
+            self,
+            url: URL,
+            content_type: str = None):
+
         if url not in self.dependencies and url not in self.document_urls:
-            if self.url_is_exportable_dependency(url):
+            if self.url_is_exportable_dependency(url, content_type):
                 self.dependencies.add(url)
                 self.pending_dependencies.add(url)
 
@@ -470,28 +583,26 @@ class Halt(Exception):
     pass
 
 
-class ExportedResource(object):
+class ExportedResource:
 
-    publishable = None
-    language = None
-    source_url = None
-    export_path = None
-    base_url = None
-    export_folder = None
-    headers = None
-    content_type = None
-    content = None
+    __export_job = None
+    __export_path = None
+    __export_folder = None
 
-    def __init__(self, export_job, source_url):
+    publishable: PublishableObject = None
+    language: str = None
+    source_url: URL = None
+    base_url: URL = None
+    headers: Dict[str, str] = None
+    content_type: str = None
+    content: bytes = None
+
+    def __init__(self, export_job: ExportJob, source_url: URL):
 
         # Source URLs
         self.source_url = source_url
         self.base_url = export_job.get_base_url(source_url)
-
-        # Destination paths
-        get_export_path = export_job.export.destination.get_export_path
-        self.export_folder = get_export_path(self.base_url)
-        self.export_path = get_export_path(source_url)
+        self.__export_job = weakref.ref(export_job)
 
     def open(self, **kwargs):
 
@@ -502,4 +613,30 @@ class ExportedResource(object):
         self.content_type = self.headers.get("Content-Type")
         if self.content_type:
             self.content_type = self.content_type.split(";", 1)[0]
+
+    @property
+    def export_folder(self) -> Sequence[str]:
+
+        if self.__export_folder is None:
+            job = self.__export_job()
+            get_export_path = job.export.destination.get_export_path
+            self.__export_folder = get_export_path(
+                self.base_url,
+                add_file_extension=False
+            )
+
+        return self.__export_folder
+
+    @property
+    def export_path(self) -> Sequence[str]:
+
+        if self.__export_path is None:
+            job = self.__export_job()
+            get_export_path = job.export.destination.get_export_path
+            self.__export_path = get_export_path(
+                self.source_url,
+                content_type=self.content_type
+            )
+
+        return self.__export_path
 

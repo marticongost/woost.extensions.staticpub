@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<ui:woost.extensions.staticpub.admin.ui.PublicationState
+    xmlns="http://www.w3.org/1999/xhtml"
+    xmlns:ui="http://www.whads.com/ns/cocktail/ui">
+
+    <ui:cocktail.ui.Button id="downloadButton">
+
+        <ui:translation attribute="text"/>
+
+        <?on click
+        window.open("/x_staticpub_zip/" + instance.dataBinding.object.id, "x_staticpub_zip");
+        ?>
+
+    </ui:cocktail.ui.Button>
+
+</ui:woost.extensions.staticpub.admin.ui.PublicationState>
+

@@ -2,33 +2,36 @@
 
 .. moduleauthor:: Martí Congost <marti.congost@whads.com>
 """
+import os
 import zipfile
 
 from .exporter import Exporter
 
 
-class ZipExporter(Exporter):
+class ZIPExporter(Exporter):
 
     filename: str = None
     zip_options: dict = {}
     _file = None
 
-    def __init__(self, filename: str):
-        self.filename = root_folder
+    def __init__(self, filename: str = None):
+        self.filename = filename
         self.zip_options = self.zip_options.copy()
 
     def open(self):
 
-        if os.path.exists(self.filename):
-            mode = "a"
-        else:
-            mode = "w"
+        folder = os.path.dirname(self.filename)
+        if not os.path.exists(folder):
+            os.makedirs(folder, exist_ok=True)
 
         self._file = zipfile.ZipFile(
             self.filename,
-            mode=mode,
+            mode="w",
             **self.zip_options
         )
+
+    def close(self):
+        self._file.close()
 
     def get_zip_options_for_path(
             self,
@@ -40,11 +43,8 @@ class ZipExporter(Exporter):
 
     def write_file(self, path, content, content_type=None):
         self._file.writestr(
-            path,
+            "/".join(path),
             content,
             **self.get_zip_options_for_path(path, content, content_type)
         )
-
-    def remove_file(self, path):
-        pass
 

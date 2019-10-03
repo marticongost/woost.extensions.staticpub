@@ -1,0 +1,9 @@
+
+#downloadButton {
+    margin-top: 1em;
+
+    :host(:not([state='completed'])) & {
+        display: none;
+    }
+}
+

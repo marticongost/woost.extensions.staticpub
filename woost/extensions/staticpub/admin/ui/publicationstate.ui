@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<ui:cocktail.ui.Value
+    xmlns="http://www.w3.org/1999/xhtml"
+    xmlns:ui="http://www.whads.com/ns/cocktail/ui">
+
+    <ui:symbol name="POLL_TIMER"/>
+
+    <?head
+    // Update the progress bar every three seconds
+    const POLL_INTERVAL = 3000;
+    ?>
+
+    <?class
+    disconnectedCallback() {
+        if (this[POLL_TIMER]) {
+            clearTimeout(this[POLL_TIMER]);
+        }
+        super.disconnectedCallback();
+    }
+    ?>
+
+    <?on dataBinding:changed
+    if (newValue && newValue.object) {
+        this.exportId = newValue.object.id;
+    }
+    ?>
+
+    <?on value:changed
+    this.state = newValue || "";
+    ?>
+
+    <ui:property
+        name="state"
+        type="string"
+        reflected="true"/>
+
+    <ui:property
+        name="exportId"
+        type="number"
+        reflected="true"
+        final="true">
+        <?on changed
+        if (newValue) {
+            const pollState = () => {
+                cocktail.ui.request({
+                    url: `/x_staticpub_publication/state/${newValue}`,
+                    parameters: {lang: cocktail.getLanguage()},
+                    responseType: "json"
+                })
+                    .then((xhr) => {
+                        this.value = xhr.response.state;
+
+                        // Update the progress bar
+                        const totalTasks = xhr.response.tasks.length;
+                        let pendingTasks = 0;
+                        for (let task of xhr.response.tasks) {
+                            if (task.state == "pending") {
+                                pendingTasks++;
+                            }
+                        }
+                        this.progressBar.value = Math.floor((totalTasks - pendingTasks) / totalTasks * 100);
+                        this[POLL_TIMER] = setTimeout(pollState, POLL_INTERVAL);
+                    });
+            }
+            pollState();
+        }
+        ?>
+    </ui:property>
+
+    <ui:cocktail.ui.ProgressBar id="progressBar"/>
+
+</ui:cocktail.ui.Value>
+

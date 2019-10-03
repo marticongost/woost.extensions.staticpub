@@ -22,10 +22,10 @@ class FolderExporter(Exporter):
             os.makedirs(folder)
         file_path = os.path.join(self.root_folder, *path)
 
-        if isinstance(content, unicode):
+        if isinstance(content, str):
             content = content.encode(self.encoding)
 
-        with open(file_path, "w") as file:
+        with open(file_path, "wb") as file:
             file.write(content)
 
     def remove_file(self, path):

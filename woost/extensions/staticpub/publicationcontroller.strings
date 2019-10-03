@@ -1,0 +1,38 @@
+
+[woost.extensions.staticpub.publicationcontroller.PublicationController]
+
+    [task_count(count, pending_only)]
+    @switch (count, pending_only)
+
+        [empty]
+        @case (0, False)
+        ca: No hi ha cap element que encaixi amb la selecció indicada.
+        es: Ningún elemento encaja con la selección indicada.
+        en: No element matches the given selection.
+
+        [nothing_pending]
+        @case (0, True)
+        ca:
+            La teva selecció no conté cap contingut que necessiti ser exportat.
+            Si vols pots <a href="#disable_pending_only">tornar a exportar la
+            selecció sencera</a>.
+        es:
+            Tu selección no incluye ningún contenido que necesite ser exportado.
+            Si quieres puedes <a href="#disable_pending_only">volver a exportar
+            la selección entera</a>.
+        en:
+            Your selection contains no modified content that needs to be exported.
+            If you want, you can <a href="#disable_pending_only">export your whole
+            selection again</a>.
+
+        [not_empty]
+        @default
+        ca: ${plural2(count, u"S'exportarà l'element següent", u"S'exportaran <strong>%d</strong> elements")}:
+        es: ${plural2(count, u"Se exportará el elemento siguiente", u"Se exportarán <strong>%d</strong> elementos")}:
+        en: The following ${plural2(count, u"element", u"<strong>%d</strong> elements")} will be exported:
+
+    [language_count(count)]
+    ca: ${plural2(count, "1 idioma", "%d idiomes")}
+    es: ${plural2(count, "1 idioma", "%d idiomas")}
+    en: ${plural2(count, "1 language", "%d languages")}
+

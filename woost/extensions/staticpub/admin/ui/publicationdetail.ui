@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<ui:element
+    xmlns="http://www.w3.org/1999/xhtml"
+    xmlns:ui="http://www.whads.com/ns/cocktail/ui">
+
+    <ui:symbol name="REQUEST"/>
+
+    <ui:requires component="cocktail.ui.Lock"/>
+
+    <ui:property
+        name="state"
+        type="string"
+        default="idle"
+        reflected="true"/>
+
+    <ui:property
+        name="publicationOptions"
+        reflected="false"/>
+
+    <?class
+    update() {
+
+        if (this[REQUEST]) {
+            this[REQUEST].xhr.abort();
+            this[REQUEST] = null;
+        }
+
+        this.summaryLabel.innerHTML = "";
+        this.state = "loading";
+        cocktail.ui.Lock.show({
+            parent: this.shadowRoot,
+            message: cocktail.ui.translations[cls.fullName + ".loading"]
+        });
+
+        this.clear();
+        let lockDelay = 0;
+        const DELAY_PER_TASK = 2.5;
+        const LOCK_DELAY_FACTOR = 0.75;
+
+        const request = this[REQUEST] = woost.extensions.staticpub.preview(this.publicationOptions);
+        return request
+            .then((xhr) => {
+                this.summaryLabel.innerHTML = xhr.response.summary;
+                const disablePendingOnlyLink = this.summaryLabel.querySelector("a");
+                if (disablePendingOnlyLink) {
+                    disablePendingOnlyLink.addEventListener("click", (e) => {
+                        cocktail.ui.trigger(this, "disablePendingOnlyRequested");
+                        e.preventDefault();
+                    });
+                }
+                this.addTasks(xhr.response.tasks);
+                if (xhr.response.tasks.length) {
+                    const delay = xhr.response.tasks.length * DELAY_PER_TASK;
+                    lockDelay = delay * LOCK_DELAY_FACTOR;
+                    setTimeout(() => this.state = "ready", delay);
+                }
+                else {
+                    this.state = "empty";
+                }
+                return xhr.response.tasks;
+            })
+            .finally(() => {
+                setTimeout(() => cocktail.ui.Lock.clear(), lockDelay);
+            });
+    }
+
+    clear() {
+        cocktail.ui.empty(this.tasksList);
+    }
+
+    addTasks(tasks) {
+        for (let task of tasks) {
+            this.addTask(task);
+        }
+    }
+
+    addTask(task) {
+        const entry = this.createEntry(task);
+        this.tasksList.appendChild(entry);
+        return entry;
+    }
+
+    createEntry(task) {
+        const entry = this.constructor.Entry.create();
+        entry.task = task;
+        return entry;
+    }
+    ?>
+
+    <div id="summaryLabel"/>
+
+    <ul id="tasksList"/>
+
+    <li ui:component="Entry">
+
+        <ui:property
+            name="task"
+            reflected="false"
+            final="true">
+
+            <?on changed
+            this.publishable.value = cocktail.schema.objectFromJSONValue(newValue.publishable);
+
+            for (let lang in newValue.languages) {
+                const record = newValue.languages[lang];
+                record.language = lang;
+                const langEntry = this.constructor.LanguageEntry.create();
+                langEntry.record = record;
+                this.languageEntries.appendChild(langEntry);
+            }
+            ?>
+        </ui:property>
+
+        <ui:woost.admin.ui.ItemCard id="publishable" showThumbnails="false"/>
+
+        <ul id="languageEntries"/>
+
+        <li ui:component="LanguageEntry">
+
+            <ui:property
+                name="record"
+                reflected="false"
+                final="true">
+
+                <?on changed
+                let languageName;
+                if (newValue.language) {
+                    this.language = newValue.language;
+                    languageName = cocktail.ui.translations["cocktail.locales." + newValue.language];
+                }
+                else {
+                    this.language = "";
+                    languageName = "";
+                }
+
+                this.actionIcon.src = `woost.extensions.staticpub.admin.ui://images/${newValue.action}.svg`;
+                this.languageLabel.innerText = languageName;
+                this.sourceLink.href = newValue.source_url;
+                this.exportLink.href = newValue.export_url;
+                ?>
+            </ui:property>
+
+            <ui:property
+                name="language"
+                type="string"
+                reflected="true"/>
+
+            <ui:cocktail.ui.SVG id="actionIcon"/>
+
+            <div id="languageLabel"/>
+
+            <ui:cocktail.ui.Tooltip id="tooltip">
+
+                <a id="sourceLink" target="_blank">
+                    <ui:translation/>
+                </a>
+
+                <a id="exportLink" target="_blank">
+                    <ui:translation/>
+                </a>
+
+            </ui:cocktail.ui.Tooltip>
+
+        </li>
+
+    </li>
+
+</ui:element>
+

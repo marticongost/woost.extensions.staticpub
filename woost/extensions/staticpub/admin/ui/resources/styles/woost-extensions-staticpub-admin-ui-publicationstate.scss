@@ -1,0 +1,9 @@
+
+#progressBar {
+    margin-top: 1em;
+
+    :host([state='completed']) & {
+        display: none;
+    }
+}
+

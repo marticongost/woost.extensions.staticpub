@@ -4,12 +4,15 @@
 """
 import sys
 import subprocess
+from datetime import timedelta
 
 from BTrees.OOBTree import OOBTree
 from cocktail import schema
+from cocktail.javascriptserializer import JS
+from cocktail.events import event_handler
 from cocktail.persistence import PersistentMapping
 from woost import app
-from woost.models import Item, Publishable, LocaleMember
+from woost.models import Item, User, Publishable, LocaleMember
 
 export_task_schema = schema.Schema(
     "woost.extensions.staticpub.export.export_task_schema",
@@ -45,10 +48,17 @@ class Export(Item):
     instantiable = False
 
     members_order = [
+        "user",
         "destination",
         "state",
         "tasks"
     ]
+
+    user = schema.Reference(
+        editable=schema.READ_ONLY,
+        type=User,
+        related_end=schema.Collection()
+    )
 
     destination = schema.Reference(
         editable=schema.READ_ONLY,
@@ -66,7 +76,9 @@ class Export(Item):
             "completed"
         ],
         indexed=True,
-        display="woost.extensions.staticpub.ExportStateDisplay"
+        ui_read_only_form_control=JS("""
+            (binding) => binding.object.destination._class.state_ui_component
+        """)
     )
 
     tasks = schema.Mapping(
@@ -78,6 +90,16 @@ class Export(Item):
         ),
         values=export_task_schema
     )
+
+    auth_token = None
+
+    def renew_auth_token(self):
+        if self.user:
+            self.auth_token = app.authentication.create_auth_token(
+                self.user,
+                expiration=timedelta(hours=2)
+            )
+        return self.auth_token
 
     def add_task(self, action, item, language):
 
@@ -135,4 +157,15 @@ class Export(Item):
             "export",
             f"export:{self.id}"
         ])
+
+    @event_handler
+    def handle_changed(e):
+        if e.member is Export.state:
+            if e.value == "running":
+                if e.source.user and not e.source.auth_token:
+                    e.source.renew_auth_token()
+            elif e.value == "completed":
+                if e.source.auth_token:
+                    app.authentication.revoke_auth_token(e.source.auth_token)
+                    e.source.auth_token = None
 

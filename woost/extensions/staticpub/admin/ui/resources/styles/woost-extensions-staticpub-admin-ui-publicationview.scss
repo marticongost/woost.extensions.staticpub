@@ -1,0 +1,37 @@
+
+#actionList {
+    margin-left: auto;
+}
+
+#main {
+    display: flex;
+    padding: 0;
+    align-items: stretch;
+    overflow: hidden;
+}
+
+#exportForm {
+    flex: 0 0 auto;
+    border-right: 1px solid #ddd;
+    padding: 1.5rem 1rem;
+    padding-right: 2rem;
+    font-size: 0.9rem;
+    --form-control-separation: 0.8em;
+}
+
+#publicationDetail,
+#publicationState {
+    flex: 1 1 auto;
+    overflow: hidden;
+    overflow-y: auto;
+    $transition: 0.5s ease;
+    transition: width $transition, opacity $transition;
+}
+
+:host([state='exporting']) #publicationDetail,
+:host(:not([state='exporting'])) #publicationState {
+    width: 0;
+    opacity: 0;
+    pointer-events: none;
+}
+

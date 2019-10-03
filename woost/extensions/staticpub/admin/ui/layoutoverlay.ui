@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<ui:mixin
+    xmlns="http://www.w3.org/1999/xhtml"
+    xmlns:ui="http://www.whads.com/ns/cocktail/ui">
+
+    <ui:requires component="woost.extensions.staticpub.admin.ui.PublicationView"/>
+
+    <ui:resource href="woost.extensions.staticpub.admin.ui://scripts/nodes.js"/>
+    <ui:resource href="woost.extensions.staticpub.admin.ui://scripts/actions.js"/>
+
+</ui:mixin>
+

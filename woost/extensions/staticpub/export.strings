@@ -24,6 +24,11 @@
             es: Destinación
             en: Destination
 
+            [user]
+            ca: Usuari
+            es: Usuario
+            en: User
+
             [state]
             ca: Estat
             es: Estado

@@ -1,0 +1,20 @@
+
+[woost.extensions.staticpub.admin.ui.PublicationDetail]
+
+    [loading]
+    ca: Cercant el contingut a exportar...
+    es: Buscando el contenido a exportar...
+    en: Finding the content to export...
+
+    [Entry.LanguageEntry]
+
+        [sourceLink]
+        ca: Versió local
+        es: Versión local
+        en: Local version
+
+        [exportLink]
+        ca: Versió exportada
+        es: Versión exportada
+        en: Exported version
+

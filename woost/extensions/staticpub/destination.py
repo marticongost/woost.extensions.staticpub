@@ -2,19 +2,30 @@
 
 .. moduleauthor:: Martí Congost <marti.congost@whads.com>
 """
+from typing import Sequence, Union
 from collections import Iterable
+from mimetypes import guess_extension
 
 from BTrees.IOBTree import IOBTree
 from BTrees.OOBTree import OOBTree, OOTreeSet, OOBucket
-from cocktail.events import Event
+from cocktail.events import Event, when
 from cocktail.caching import whole_cache, normalize_scope
 from cocktail.urls import URL
 from cocktail import schema
 from woost import app
+from woost.urls import URLResolution
 from woost.models import Item, Website
+from woost.admin.controllers.admincontroller import AdminController
+from woost.admin.schemaexport import SchemaExport, exports_model
 
 from .exportjob import ExportJob
 from .utils import iter_all_exportable_content
+
+
+@when(AdminController.collecting_ui_components)
+def add_export_state_components(e):
+    for dest_type in Destination.schema_tree():
+        e.require_component(dest_type.state_ui_component)
 
 
 class Destination(Item):
@@ -22,7 +33,12 @@ class Destination(Item):
     type_group = "staticpub"
     export_file_extension = ".html"
     export_job_class = ExportJob
+    exporter_class = None
     instantiable = False
+    state_ui_component = (
+        "woost.extensions.staticpub.admin.ui."
+        "PublicationState"
+    )
 
     resolving_export_path = Event()
 
@@ -64,16 +80,34 @@ class Destination(Item):
         self._entries_by_tag = OOBTree()
         self._entry_tags = OOBTree()
 
-    def create_exporter(self):
-        raise ValueError("Not implemented")
+    def create_exporter(self, **kwargs):
+        if self.exporter_class is None:
+            raise ValueError(f"No exporter class defined for {self}")
+        return self.exporter_class(**kwargs)
 
-    def get_export_url(self, url, resolution=None):
+    def get_export_url(
+            self,
+            url: URL,
+            resolution: URLResolution = None,
+            content_type: str = None) -> URL:
+
         root_url = URL(self.url)
         return root_url.copy(
-            path=root_url.path.append(self.get_export_path(url, resolution))
+            path=root_url.path.append(
+                self.get_export_path(
+                    url,
+                    resolution=resolution,
+                    content_type=content_type
+                )
+            )
         )
 
-    def get_export_path(self, url, resolution=None):
+    def get_export_path(
+            self,
+            url: Union[URL, str],
+            resolution: URLResolution = None,
+            content_type: str = None,
+            add_file_extension: bool = True) -> Sequence[str]:
 
         url = URL(url)
 
@@ -105,11 +139,16 @@ class Destination(Item):
 
         # File extension
         if (
-            self.export_file_extension
+            add_file_extension
             and url.path.segments
             and "." not in url.path.segments[-1]
         ):
-            export_path[-1] += self.export_file_extension
+            ext = self.get_export_file_extension(
+                url,
+                content_type
+            )
+            if ext:
+                export_path[-1] += ext
 
         # Customization
         e = self.resolving_export_path(
@@ -119,6 +158,16 @@ class Destination(Item):
         )
 
         return e.export_path
+
+    def get_export_file_extension(
+            self,
+            url: URL,
+            content_type: str = None) -> str:
+
+        if content_type == "text/html" or not content_type:
+            return self.export_file_extension
+
+        return guess_extension(content_type)
 
     def iter_pending_tasks(self, publishable=None, languages=None):
         if publishable:
@@ -273,4 +322,15 @@ class Destination(Item):
                 "Expected whole_cache, a string, a tuple of strings or a "
                 "collection of any of those elements."
             )
+
+
+@exports_model(Destination)
+class DestinationSchemaExport(SchemaExport):
+
+    def get_properties(self, member, nested):
+        yield from super().get_properties(member, nested)
+        yield (
+            "state_ui_component",
+            self.export_display(member.state_ui_component)
+        )
 

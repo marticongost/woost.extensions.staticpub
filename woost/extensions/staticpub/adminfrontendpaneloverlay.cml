@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<?py
+from woost.extensions.staticpub.utils import get_current_export
+?>
+
+<py:overlay
+    xmlns="http://www.w3.org/1999/xhtml"
+    xmlns:py="http://www.whads.com/ns/cocktail/templates"
+    py:class="woost.views.AdminFrontendPanel">
+
+    <?py-class
+    def should_display(self):
+        return (
+            get_current_export() is None
+            and call_base()
+        )
+    ?>
+
+</py:overlay>
+

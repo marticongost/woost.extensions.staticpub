@@ -1,0 +1,27 @@
+
+[woost.extensions.staticpub.admin]
+
+    [nodes]
+
+        [PublicationNode.title]
+        ca: Publicació
+        es: Publicación
+        en: Publication
+
+    [actions]
+
+        [x-staticpub-publish]
+        ca: Exportar HTML
+        es: Exportar HTML
+        en: Export HTML
+
+        [x-staticpub-begin-publication]
+        ca: Començar
+        es: Empezar
+        en: Begin
+
+            [lock]
+            ca: Preparant l'exportació
+            es: Preparando la exportación
+            en: Preparing the export operation
+

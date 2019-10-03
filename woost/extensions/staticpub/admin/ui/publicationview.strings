@@ -1,0 +1,52 @@
+
+[woost.extensions.staticpub.admin.ui.PublicationView.form]
+
+    [members]
+
+        [destination]
+        ca: Exportar a
+        es: Exportar a
+        en: Export to
+
+        [pending_only]
+        ca: Exportar només el contingut modificat
+        es: Exportar solo el contenido pendiente
+        en: Export only pending content
+
+        [include_descendants]
+        ca: Incloure pàgines filles
+        es: Incluir páginas hijas
+        en: Include child pages
+
+        [language_mode]
+        ca: Idiomes a exportar
+        es: Idiomas a exportar
+        en: Languages to publish
+
+            [values]
+
+                [all]
+                ca: Tots
+                es: Todos
+                en: All
+
+                [include]
+                ca: Només els indicats
+                es: Solo los indicados
+                en: Only the selected languages
+
+                [exclude]
+                ca: Tots excepte els indicats
+                es: Todos excepto los indicados
+                en: All, excluding the selected languages
+
+        [language_subset]
+        ca: Idiomes seleccionats
+        es: Idiomas seleccionados
+        en: Language selection
+
+        [include_neutral_language]
+        ca: Incloure continguts independents de l'idioma
+        es: Incluir contenidos independientes del idioma
+        en: Include language independant content
+

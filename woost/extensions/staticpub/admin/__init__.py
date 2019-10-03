@@ -4,6 +4,7 @@
 """
 from . import (
     admin,
-    sections
+    sections,
+    ui
 )
 

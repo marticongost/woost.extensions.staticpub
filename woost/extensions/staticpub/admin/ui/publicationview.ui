@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<ui:woost.admin.ui.StackNode
+    xmlns="http://www.w3.org/1999/xhtml"
+    xmlns:ui="http://www.whads.com/ns/cocktail/ui">
+
+    <ui:symbol name="LOAD_PREVIEW"/>
+
+    <ui:property
+        name="state"
+        type="string"
+        reflected="true"
+        default="idle">
+        <?on changed
+        this.actionList.actionContext.state = newValue;
+        if (this.navigationNode) {
+            this.actionList.updateActions();
+        }
+        ?>
+    </ui:property>
+
+    <?class
+    [LOAD_PREVIEW]() {
+        const values = this.exportForm.value;
+        if (values && this.navigationNode) {
+            this.state = "loading";
+            const options = Object.assign(
+                {selection: this.navigationNode.selection},
+                values
+            );
+            this.actionList.actionContext.publicationOptions = options;
+            this.publicationDetail.publicationOptions = options;
+            this.publicationDetail.update().then((tasks) => {
+                this.state = tasks.length ? "ready" : "empty";
+            });
+            this.exportForm.awaitFields().then((fields) => {
+                cocktail.ui.setReasonForHiding(
+                    fields.get("language_subset"),
+                    "incompatibleLanguageMode",
+                    fields.get("language_mode").value == "all"
+                );
+            });
+        }
+    }
+    ?>
+
+    <?on navigationNode:changed
+    if (newValue) {
+        this.actionList.actionContext.node = newValue;
+        this.actionList.actionSetup();
+        this[LOAD_PREVIEW]();
+    }
+    ?>
+
+    <ui:with ui:element="headerContent">
+        <ui:cocktail.ui.ActionList
+            id="actionList"
+            buttonStyle="iconAboveText">
+            <?js
+            element.actionContext = {
+                view: this,
+                slot: "x-staticpub-publication-toolbar"
+            };
+            element.actionSource = woost.extensions.staticpub.admin.actions.publicationToolbar;
+            ?>
+        </ui:cocktail.ui.ActionList>
+    </ui:with>
+
+    <ui:with ui:element="main">
+
+        <ui:cocktail.ui.Form id="exportForm">
+
+            <?on value:changed
+            instance[LOAD_PREVIEW]();
+            ?>
+
+            <?js
+            woost.models.Configuration.getInstance("config", {members: ["x_staticpub_default_dest"]}).then((config) => {
+                element.dataBinding = {
+                    member: new cocktail.schema.Schema({
+                        name: "woost.extensions.staticpub.admin.ui.PublicationView.form",
+                        members: [
+                            new cocktail.schema.Reference({
+                                name: "destination",
+                                type: woost.extensions.staticpub.Destination,
+                                required: true,
+                                [cocktail.ui.formControl]: cocktail.ui.RadioSelector
+                            }),
+                            new cocktail.schema.Boolean({
+                                name: "pending_only",
+                                required: true
+                            }),
+                            new cocktail.schema.Boolean({
+                                name: "include_descendants",
+                                required: true
+                            }),
+                            new cocktail.schema.String({
+                                name: "language_mode",
+                                enumeration: ["all", "include", "exclude"],
+                                required: true,
+                                [cocktail.ui.formControl]: cocktail.ui.RadioSelector
+                            }),
+                            new cocktail.schema.Collection({
+                                name: "language_subset",
+                                items: new cocktail.schema.Locale({
+                                    enumeration: cocktail.ui.locales
+                                })
+                            }),
+                            new cocktail.schema.Boolean({
+                                name: "include_neutral_language",
+                                required: true
+                            })
+                        ]
+                    }),
+                    value: {
+                        destination: config.x_staticpub_default_dest,
+                        pending_only: true,
+                        include_descendants: true,
+                        language_mode: "all",
+                        language_subset: cocktail.ui.locales,
+                        include_neutral_language: true
+                    }
+                };
+            });
+            ?>
+        </ui:cocktail.ui.Form>
+
+        <ui:woost.extensions.staticpub.admin.ui.PublicationDetail id="publicationDetail">
+            <?on disablePendingOnlyRequested
+            instance.exportForm.awaitFields().then((fields) => {
+                fields.get("pending_only").value = false;
+            });
+            ?>
+        </ui:woost.extensions.staticpub.admin.ui.PublicationDetail>
+
+    </ui:with>
+
+</ui:woost.admin.ui.StackNode>
+

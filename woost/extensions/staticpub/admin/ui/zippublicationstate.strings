@@ -1,0 +1,8 @@
+
+[woost.extensions.staticpub.admin.ui.ZIPPublicationState]
+
+    [downloadButton]
+    ca: Descarregar
+    es: Descargar
+    en: Download
+

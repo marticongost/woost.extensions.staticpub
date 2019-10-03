@@ -9,6 +9,8 @@ from .amazons3exporter import AmazonS3Exporter
 
 class AmazonS3Destination(Destination):
 
+    exporter_class = AmazonS3Exporter
+
     members_order = [
         "aws_access_key",
         "aws_secret_key",
@@ -58,5 +60,5 @@ class AmazonS3Destination(Destination):
         if self.aws_profile:
             session_parameters["profile_name"] = self.profile_name
 
-        return AmazonS3Exporter(self.bucket_name, session_parameters)
+        return self.exporter_class(self.bucket_name, session_parameters)
 

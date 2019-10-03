@@ -20,7 +20,7 @@ from cocktail.translations import (
     set_language
 )
 from cocktail.persistence import transaction
-from woost.models import Configuration, Publishable, Document
+from woost.models import Configuration, Publishable, Document, User
 
 from .export import Export
 from .destination import Destination
@@ -115,6 +115,20 @@ class CLI(object):
             except:
                 raise ArgumentTypeError(f"{id} is not a valid destination ID")
 
+        def user_parser(value):
+
+            try:
+                try:
+                    id = int(value)
+                except ValueError:
+                    return User.require_instance(email=value)
+                else:
+                    return User.require_instance(id)
+            except:
+                pass
+
+            raise ArgumentTypeError(f"{id} is not a valid user ID or email")
+
         parser.add_argument(
             "action",
             choices=["export", "list"],
@@ -157,6 +171,16 @@ class CLI(object):
             type=destination_parser,
             help=ni("""
                 The ID of the Destination object indicating the export target.
+                """)
+        )
+        parser.add_argument(
+            "-u", "--user",
+            type=user_parser,
+            help=ni("""
+                The ID or email of the User that the export operation should be
+                run as. The default is to run the export as an anonymous user;
+                using a specific user might be necessary in order to reach
+                restricted content.
                 """)
         )
         parser.add_argument(
@@ -240,7 +264,7 @@ class CLI(object):
                 sys.exit(1)
         else:
             if args.destination is None:
-                args.destination = Configuration.instance.staticpub_default_dest
+                args.destination = Configuration.instance.x_staticpub_default_dest
                 if args.destination is None:
                     args.destination = Destination.select()[0]
                     if args.destination is None:
@@ -264,6 +288,7 @@ class CLI(object):
 
         if tasks:
             export = Export.new(destination=args.destination)
+            export.user = args.user
             for task in tasks:
                 export.add_task(*task)
             return export
@@ -272,6 +297,7 @@ class CLI(object):
 
     def _get_tasks_from_args(self, args):
 
+        user = args.user
         tasks = set()
 
         if args.content:
@@ -287,17 +313,17 @@ class CLI(object):
                 elif selector_type == "branch":
                     action, root = selector_value
                     for pub in root.descend_tree(include_self=True):
-                        for lang in iter_exportable_languages(pub):
+                        for lang in iter_exportable_languages(pub, user=user):
                             if not self.languages or lang in self.languages:
                                 tasks.add((action, pub, lang))
 
                 elif selector_type == "item":
                     action, pub = selector_value
-                    for lang in iter_exportable_languages(pub):
+                    for lang in iter_exportable_languages(pub, user=user):
                         if not self.languages or lang in self.languages:
                             tasks.add((action, pub, lang))
         else:
-            for pub, lang in iter_all_exportable_content():
+            for pub, lang in iter_all_exportable_content(user=user):
                 if not self.languages or lang in self.languages:
                     tasks.add(("post", pub, lang))
 
@@ -323,7 +349,7 @@ class CLI(object):
     def export_action(self):
         if self.export is None:
             if self.verbose:
-                print "Nothing to export"
+                print("Nothing to export")
         else:
             job = self.export.create_export_job()
             job.errors = self.errors
@@ -348,9 +374,9 @@ class CLI(object):
         def show_execution_summary(e):
             progress_bar.finish()
             self.end = time()
-            print (
+            print(
                 f"Processed {tasks_count} publications "
-                f"and {len(job.dependencies} dependencies "
+                f"and {len(job.dependencies)} dependencies "
                 f"in {self.end - self.start:.2f}"
             )
 
@@ -415,38 +441,45 @@ class CLI(object):
             tasks[action][publishable.__class__][publishable].append(language)
 
         for action in sorted(tasks):
-            print
-            print styled(
-                action.upper().ljust(120),
-                "white",
-                "green" if action == "post" else "red",
-                "bold"
+            print()
+            print(
+                styled(
+                    action.upper().ljust(120),
+                    "white",
+                    "green" if action == "post" else "red",
+                    "bold"
+                )
             )
 
             for cls, cls_tasks in tasks[action].iteritems():
                 cls_label = translations(cls)
-                print
-                print styled(
-                    cls_label.ljust(120),
-                    "white",
-                    "dark_gray",
-                    "bold"
+                print()
+                print(
+                    styled(
+                        cls_label.ljust(120),
+                        "white",
+                        "dark_gray",
+                        "bold"
+                    )
                 )
 
                 for publishable, languages in cls_tasks.iteritems():
-                    print str(publishable.id).ljust(10),
-                    print styled(
-                        translations(
-                            publishable,
-                            discard_generic_translation=True,
-                            language=languages[0]
-                        )[:36].ljust(38),
-                        "slate_blue"
-                    ),
+                    print(str(publishable.id).ljust(10), end=" ")
+                    print(
+                        styled(
+                            translations(
+                                publishable,
+                                discard_generic_translation=True,
+                                language=languages[0]
+                            )[:36].ljust(38),
+                            "slate_blue"
+                        ),
+                        end=" "
+                    )
                     if languages != [None]:
-                        print styled(", ".join(languages), "pink")
+                        print(styled(", ".join(languages), "pink"))
                     else:
-                        print
+                        print()
 
 
 class EmptyExport(Exception):

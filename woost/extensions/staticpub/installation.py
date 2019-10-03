@@ -8,7 +8,8 @@ from woost.models import (
     Configuration,
     Website,
     Role,
-    Publishable
+    Publishable,
+    get_publishable_models
 )
 
 from .exportpermission import ExportPermission
@@ -30,7 +31,7 @@ def install():
     """Creates the assets required by the staticpub extension."""
     create_export_script()
     create_default_permissions()
-    disable_export_for_special_pages()
+    set_exportable_flag()
 
 
 def create_export_script():
@@ -52,7 +53,7 @@ def create_default_permissions():
         admins.permissions.append(permission)
 
 
-def disable_export_for_special_pages():
+def set_exportable_flag():
 
     for item in [Configuration.instance] + list(Website.select()):
         for key in (
@@ -73,4 +74,9 @@ def disable_export_for_special_pages():
             page = Publishable.get_instance(qname=qname)
             if page:
                 page.included_in_static_publication = False
+
+    for cls in get_publishable_models():
+        member = cls.get_member("x_staticpub_exportable")
+        if member and member.indexed:
+            member.rebuild_index()
 

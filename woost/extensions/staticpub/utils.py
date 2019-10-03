@@ -4,7 +4,14 @@
 """
 from typing import Iterable, Tuple
 
-from woost.models import PublishableObject, Publishable, User
+import cherrypy
+from woost import app
+from woost.models import (
+    PublishableObject,
+    Publishable,
+    User,
+    get_publishable_models
+)
 
 from .export import Export
 
@@ -33,45 +40,70 @@ def iter_exportable_languages(
     :param publishable: The publishable object to evaluate.
 
     :param user: The user for which the export should be performed. Defaults to
-        the anonymous user.
+        the active user.
 
     :return: An iterable sequence of language codes.
     """
-
-    if publishable.x_staticpub_exportable:
+    if publishable.x_staticpub_exportable and publishable.enabled:
 
         if user is None:
-            user = User.require_instance(qname="woost.anonymous_user")
+            user = app.user
 
         if publishable.per_language_publication:
             for language in publishable.enabled_translations:
                 if publishable.is_accessible(
                     user=user,
                     language=language,
-                    website="any"
+                    website=PublishableObject.any_website
                 ):
                     yield language
         else:
-            if publishable.is_accessible(user=user, website="any"):
+            if publishable.is_accessible(
+                user=user,
+                website=PublishableObject.any_website
+            ):
                 yield None
 
 
-def iter_all_exportable_content() -> Iterable[Tuple[PublishableObject, str]]:
-    """Iterates over all the content that can be statically exported.
+def iter_all_exportable_items(
+        user: User = None) -> Iterable[PublishableObject]:
+    """Iterates over all the items that can be statically exported.
 
-    :return: An iterable sequence of pairs of
-        `woost.models.publishableobject.PublishableObject` and language codes.
+    :param user: The user for which the export should be performed. Defaults to
+        the active user.
+
+    :return: An iterable sequence of publishable objects.
     """
-    anon = User.require_instance(qname="woost.anonymous_user")
+    if user is None:
+        user = app.user
 
     for cls in get_publishable_models():
 
         items = cls.select()
 
-        if cls is Publishable:
-            items.add_filter(Publishable.x_staticpub_exportable.equal(True))
+        if cls.get_member("x_staticpub_exportable"):
+            items.add_filter(cls.x_staticpub_exportable.equal(True))
+        else:
+            all_items = items
+            items = (item for item in all_items if item.x_staticpub_exportable)
 
-        for publishable in items:
-            for language in iter_exportable_languages(publishable, anon):
-                yield publishable, language
+        yield from items
+
+
+def iter_all_exportable_content(
+        user: User = None) -> Iterable[Tuple[PublishableObject, str]]:
+    """Iterates over all the content that can be statically exported.
+
+    :param user: The user for which the export should be performed. Defaults to
+        the active user.
+
+    :return: An iterable sequence of pairs of
+        `woost.models.publishableobject.PublishableObject` and language codes.
+    """
+    if user is None:
+        user = app.user
+
+    for item in iter_all_exportable_items(user):
+        for language in iter_exportable_languages(publishable, user):
+            yield publishable, language
 

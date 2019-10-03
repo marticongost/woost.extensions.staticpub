@@ -10,6 +10,8 @@ from .folderexporter import FolderExporter
 
 class FolderDestination(Destination):
 
+    exporter_class = FolderExporter
+
     members_order = [
         "root_folder"
     ]
@@ -20,5 +22,5 @@ class FolderDestination(Destination):
     )
 
     def create_exporter(self):
-        return FolderExporter(self.root_folder)
+        return self.exporter_class(self.root_folder)
 

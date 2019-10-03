@@ -16,7 +16,8 @@ Publishable.add_member(
         indexed=True,
         affects_cache_invalidation=False,
         listed_by_default=False,
-        member_group="publication"
+        member_group="publication",
+        shadows_attribute=True
     )
 )
 
