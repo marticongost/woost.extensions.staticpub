@@ -3,6 +3,7 @@
 .. moduleauthor:: Martí Congost <marti.congost@whads.com>
 """
 import sys
+import os
 import subprocess
 from datetime import timedelta
 
@@ -152,7 +153,7 @@ class Export(Item):
     def execute_in_subprocess(self):
         script = app.path("scripts", "staticpub.py")
         return subprocess.Popen([
-            sys.executable,
+            os.path.join(sys.prefix, "bin", "python"),
             script,
             "export",
             f"export:{self.id}"
