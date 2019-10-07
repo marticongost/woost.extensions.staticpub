@@ -38,6 +38,7 @@ class ExportJob:
     export_completed = Event()
     export_ended = Event()
     task_starting = Event()
+    task_executed = Event()
     task_successful = Event()
     task_failed = Event()
     dependency_transfers_starting = Event()
@@ -194,6 +195,8 @@ class ExportJob:
                     export_path = \
                         self.export.destination.get_export_path(source_url)
                     self.exporter.remove_file(export_path)
+
+            self.task_executed(task=task)
 
         except Exception as export_error:
             if self.errors == "raise":
