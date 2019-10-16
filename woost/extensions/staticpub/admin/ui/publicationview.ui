@@ -53,9 +53,7 @@
     ?>
 
     <ui:with ui:element="headerContent">
-        <ui:cocktail.ui.ActionList
-            id="actionList"
-            buttonStyle="iconAboveText">
+        <ui:woost.admin.ui.ResponsiveToolbar id="actionList">
             <?js
             element.actionContext = {
                 view: this,
@@ -63,7 +61,7 @@
             };
             element.actionSource = woost.extensions.staticpub.admin.actions.publicationToolbar;
             ?>
-        </ui:cocktail.ui.ActionList>
+        </ui:woost.admin.ui.ResponsiveToolbar>
     </ui:with>
 
     <ui:with ui:element="main">
